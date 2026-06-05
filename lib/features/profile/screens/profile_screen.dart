@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/constants/facilitators.dart';
+import '../../../core/constants/groups.dart';
 import '../../auth/screens/profile_setup_screen.dart';
 import '../../auth/services/auth_service.dart';
 import '../../sadhana/services/sadhana_service.dart';
@@ -206,13 +207,13 @@ class _EditProfileSheet extends StatefulWidget {
 }
 
 class _EditProfileSheetState extends State<_EditProfileSheet> {
-  final _groupCtrl  = TextEditingController();
   final _mobileCtrl = TextEditingController();
   Facilitator? _facilitator;
+  IYFGroup?    _group;
   bool _saving = false;
 
   @override
-  void dispose() { _groupCtrl.dispose(); _mobileCtrl.dispose(); super.dispose(); }
+  void dispose() { _mobileCtrl.dispose(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) {
@@ -229,12 +230,19 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
         const Text('Name and age can only be changed by contacting admin.',
             style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontFamily: 'Poppins')),
         const SizedBox(height: 20),
-        TextField(
-          controller: _groupCtrl,
+        DropdownButtonFormField<IYFGroup>(
+          value: _group,
+          isExpanded: true,
           decoration: const InputDecoration(
-            labelText: 'Group Name',
+            labelText: 'Change Group',
             prefixIcon: Icon(Icons.group_rounded, color: AppColors.textSecondary),
           ),
+          items: kGroups.map((g) => DropdownMenuItem(
+            value: g,
+            child: Text(g.displayName,
+                style: const TextStyle(fontSize: 14, fontFamily: 'Poppins')),
+          )).toList(),
+          onChanged: (v) => setState(() => _group = v),
         ),
         const SizedBox(height: 12),
         TextField(
@@ -269,7 +277,7 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
             onPressed: _saving ? null : () async {
               setState(() => _saving = true);
               final data = <String, dynamic>{};
-              if (_groupCtrl.text.trim().isNotEmpty) data['groupName'] = _groupCtrl.text.trim();
+              if (_group != null) { data['groupName'] = _group!.name; data['groupCode'] = _group!.code; }
               if (_mobileCtrl.text.trim().isNotEmpty) data['phone'] = _mobileCtrl.text.trim();
               if (_facilitator != null) {
                 data['facilitatorName']    = _facilitator!.dikshitName;

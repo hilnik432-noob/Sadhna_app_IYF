@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/facilitators.dart';
+import '../../../core/constants/groups.dart';
 import '../../sadhana/models/sadhana_entry.dart';
 import '../services/auth_service.dart';
 
@@ -16,20 +17,20 @@ class ProfileSetupScreen extends StatefulWidget {
 }
 
 class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
-  final _formKey       = GlobalKey<FormState>();
-  final _nameCtrl      = TextEditingController();
-  final _ageCtrl       = TextEditingController();
-  final _groupCtrl     = TextEditingController();
-  final _mobileCtrl    = TextEditingController();
+  final _formKey    = GlobalKey<FormState>();
+  final _nameCtrl   = TextEditingController();
+  final _ageCtrl    = TextEditingController();
+  final _mobileCtrl = TextEditingController();
 
-  UserRole?   _category;
+  UserRole?    _category;
   Facilitator? _facilitator;
-  bool        _saving = false;
+  IYFGroup?    _group;
+  bool         _saving = false;
 
   @override
   void dispose() {
     _nameCtrl.dispose(); _ageCtrl.dispose();
-    _groupCtrl.dispose(); _mobileCtrl.dispose();
+    _mobileCtrl.dispose();
     super.dispose();
   }
 
@@ -43,13 +44,18 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       _showError('Please select your facilitator.');
       return;
     }
+    if (_group == null) {
+      _showError('Please select your group.');
+      return;
+    }
 
     setState(() => _saving = true);
     try {
       await context.read<AuthService>().updateProfile({
         'name':              _nameCtrl.text.trim(),
         'age':               int.tryParse(_ageCtrl.text.trim()) ?? 0,
-        'groupName':         _groupCtrl.text.trim(),
+        'groupName':         _group!.name,
+        'groupCode':         _group!.code,
         'phone':             _mobileCtrl.text.trim(),
         'role':              _category!.name,
         'facilitatorName':   _facilitator!.dikshitName,
@@ -184,16 +190,22 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // Group name
-                _Label('Group Name *'),
-                TextFormField(
-                  controller: _groupCtrl,
-                  textCapitalization: TextCapitalization.words,
+                // Group dropdown
+                _Label('Group *'),
+                DropdownButtonFormField<IYFGroup>(
+                  value: _group,
+                  isExpanded: true,
                   decoration: const InputDecoration(
-                    hintText: 'e.g. Govardhan Group, Vrindavan Group',
                     prefixIcon: Icon(Icons.group_rounded, color: AppColors.textSecondary),
+                    hintText: 'Select a group...',
                   ),
-                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Group name is required' : null,
+                  items: kGroups.map((g) => DropdownMenuItem(
+                    value: g,
+                    child: Text(g.displayName,
+                        style: const TextStyle(fontSize: 14, fontFamily: 'Poppins')),
+                  )).toList(),
+                  onChanged: (v) => setState(() => _group = v),
+                  validator: (v) => v == null ? 'Please select a group' : null,
                 ),
                 const SizedBox(height: 16),
 
