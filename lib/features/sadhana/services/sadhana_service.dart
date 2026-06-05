@@ -1,53 +1,107 @@
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import '../models/sadhana_entry.dart';
 
 class SadhanaService extends ChangeNotifier {
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final FirebaseFirestore _db      = FirebaseFirestore.instance;
+  final FirebaseStorage   _storage = FirebaseStorage.instance;
 
-  SadhanaEntry? _todayEntry;
-  List<SadhanaEntry> _history = [];
-  int _streakCount = 0;
+  SadhanaEntry?      _todayEntry;
+  List<SadhanaEntry> _history     = [];
+  int                _streakCount = 0;
+  UserRole           _userRole    = UserRole.student;
 
-  SadhanaEntry? get todayEntry => _todayEntry;
-  List<SadhanaEntry> get history => _history;
-  int get streakCount => _streakCount;
+  SadhanaEntry?      get todayEntry  => _todayEntry;
+  List<SadhanaEntry> get history     => _history;
+  int                get streakCount => _streakCount;
+  UserRole           get userRole    => _userRole;
 
-  String get _uid => FirebaseAuth.instance.currentUser?.uid ?? '';
-  String get _userName => FirebaseAuth.instance.currentUser?.displayName ?? '';
+  String get _uid  => FirebaseAuth.instance.currentUser?.uid ?? '';
+  String get _name => FirebaseAuth.instance.currentUser?.displayName ?? '';
 
   String _dateKey(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
-  // ── subcollection ref: users/{uid}/sadhana ──────────────────────────────
   CollectionReference get _userSadhanaRef =>
       _db.collection('users').doc(_uid).collection('sadhana');
-
-  // ── top-level ref: sadhana_logs (for admin / cross-student queries) ──────
   CollectionReference get _logsRef => _db.collection('sadhana_logs');
 
+  // ── Role ─────────────────────────────────────────────────────────────────
+  Future<void> loadUserRole() async {
+    if (_uid.isEmpty) return;
+    final doc = await _db.collection('users').doc(_uid).get();
+    final roleStr = doc.data()?['role'] as String? ?? 'student';
+    try {
+      _userRole = UserRole.values.firstWhere((r) => r.name == roleStr);
+    } catch (_) {
+      _userRole = UserRole.student;
+    }
+    notifyListeners();
+  }
+
+  Future<void> saveUserRole(UserRole role) async {
+    if (_uid.isEmpty) return;
+    _userRole = role;
+    await _db.collection('users').doc(_uid).update({'role': role.name});
+    notifyListeners();
+  }
+
+  // ── File upload (hearing notes) ───────────────────────────────────────────
+  Future<SadhanaFile?> uploadHearingFile({
+    required Uint8List bytes,
+    required String fileName,
+  }) async {
+    if (_uid.isEmpty) return null;
+    try {
+      final today   = _dateKey(DateTime.now());
+      final ref     = _storage.ref('sadhana_files/$_uid/$today/$fileName');
+      final task    = await ref.putData(bytes, SettableMetadata(contentType: _mimeType(fileName)));
+      final url     = await task.ref.getDownloadURL();
+      final now     = DateTime.now();
+      return SadhanaFile(
+        url:        url,
+        name:       fileName,
+        uploadedAt: now,
+        expiresAt:  now.add(const Duration(days: 7)),
+      );
+    } catch (e) {
+      debugPrint('File upload error: $e');
+      return null;
+    }
+  }
+
+  String _mimeType(String name) {
+    final ext = name.split('.').last.toLowerCase();
+    const map = {
+      'pdf': 'application/pdf',
+      'doc': 'application/msword',
+      'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png',
+      'txt': 'text/plain',
+    };
+    return map[ext] ?? 'application/octet-stream';
+  }
+
+  // ── Load today ────────────────────────────────────────────────────────────
   Future<void> loadTodayEntry() async {
     if (_uid.isEmpty) return;
     final today = _dateKey(DateTime.now());
-    final snap = await _userSadhanaRef
-        .where('dateKey', isEqualTo: today)
-        .limit(1)
-        .get();
-
+    final snap  = await _userSadhanaRef
+        .where('dateKey', isEqualTo: today).limit(1).get();
     _todayEntry = snap.docs.isNotEmpty
         ? SadhanaEntry.fromMap(snap.docs.first.id, snap.docs.first.data() as Map<String, dynamic>)
         : null;
     notifyListeners();
   }
 
+  // ── Load history ──────────────────────────────────────────────────────────
   Future<void> loadHistory() async {
     if (_uid.isEmpty) return;
     final snap = await _userSadhanaRef
-        .orderBy('date', descending: true)
-        .limit(60)
-        .get();
-
+        .orderBy('date', descending: true).limit(60).get();
     _history = snap.docs
         .map((d) => SadhanaEntry.fromMap(d.id, d.data() as Map<String, dynamic>))
         .toList();
@@ -65,27 +119,24 @@ class SadhanaService extends ChangeNotifier {
           _dateKey(d) == _dateKey(check.subtract(const Duration(days: 1)))) {
         streak++;
         check = d.subtract(const Duration(days: 1));
-      } else {
-        break;
-      }
+      } else break;
     }
     _streakCount = streak;
   }
 
+  // ── Submit ────────────────────────────────────────────────────────────────
   Future<void> submitSadhana(SadhanaEntry entry) async {
     if (_uid.isEmpty) return;
     final today = _dateKey(entry.date);
 
     final data = {
       ...entry.toMap(),
-      'dateKey': today,
-      'userName': _userName,
+      'dateKey':   today,
+      'userName':  _name,
       'updatedAt': FieldValue.serverTimestamp(),
     };
 
     String docId;
-
-    // Write to user subcollection
     if (_todayEntry != null) {
       await _userSadhanaRef.doc(_todayEntry!.id).update(data);
       docId = _todayEntry!.id;
@@ -94,46 +145,35 @@ class SadhanaService extends ChangeNotifier {
       docId = ref.id;
     }
 
-    // Mirror to top-level sadhana_logs for admin/cross-student tracking
-    // Doc ID: {uid}_{dateKey} — one doc per student per day, safe to overwrite
+    // Mirror to top-level for admin
     await _logsRef.doc('${_uid}_$today').set({
-      ...data,
-      'uid': _uid,
-      'logId': docId,
+      ...data, 'uid': _uid, 'logId': docId,
       'createdAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
 
-    // Update user's summary stats
+    // Update user summary
     await _db.collection('users').doc(_uid).update({
       'totalSadhanaLogs': FieldValue.increment(_todayEntry == null ? 1 : 0),
-      'lastSadhanaDate': FieldValue.serverTimestamp(),
-      'streakCount': _streakCount + (_todayEntry == null ? 1 : 0),
+      'lastSadhanaDate':  FieldValue.serverTimestamp(),
+      'streakCount':      _streakCount + (_todayEntry == null ? 1 : 0),
     });
 
     await loadTodayEntry();
     await loadHistory();
   }
 
-  // ── Admin: fetch all students' sadhana for a given date ─────────────────
-  Future<List<Map<String, dynamic>>> fetchAllStudentsSadhana(DateTime date) async {
-    final dateKey = _dateKey(date);
-    final snap = await _logsRef
-        .where('dateKey', isEqualTo: dateKey)
-        .orderBy('score', descending: true)
-        .get();
-    return snap.docs.map((d) => d.data() as Map<String, dynamic>).toList();
+  // ── Facilitator note (written by mentor) ──────────────────────────────────
+  Future<void> updateFacilitatorNote(String logDocId, String note) async {
+    await _userSadhanaRef.doc(logDocId).update({'facilitatorNote': note});
+    await _logsRef.doc(logDocId).update({'facilitatorNote': note});
+    await loadHistory();
   }
 
-  // ── Admin: fetch a specific student's full history ───────────────────────
-  Future<List<SadhanaEntry>> fetchStudentHistory(String uid) async {
-    final snap = await _db
-        .collection('users')
-        .doc(uid)
-        .collection('sadhana')
-        .orderBy('date', descending: true)
-        .get();
-    return snap.docs
-        .map((d) => SadhanaEntry.fromMap(d.id, d.data()))
-        .toList();
+  // ── Admin helpers ─────────────────────────────────────────────────────────
+  Future<List<Map<String, dynamic>>> fetchAllStudentsSadhana(DateTime date) async {
+    final snap = await _logsRef
+        .where('dateKey', isEqualTo: _dateKey(date))
+        .orderBy('score', descending: true).get();
+    return snap.docs.map((d) => d.data() as Map<String, dynamic>).toList();
   }
 }
