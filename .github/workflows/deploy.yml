@@ -1,0 +1,51 @@
+name: Build & Deploy to Firebase Hosting
+
+on:
+  push:
+    branches:
+      - main        # prod deploy on merge to main
+      - dev         # preview deploy on push to dev
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout code
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 2. Set up Flutter
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.1'
+          channel: 'stable'
+          cache: true
+
+      # 3. Install dependencies
+      - name: Flutter pub get
+        run: flutter pub get
+
+      # 4. Build web release
+      - name: Build web
+        run: flutter build web --release --base-href /
+
+      # 5. Deploy to Firebase Hosting
+      - name: Deploy to Firebase Hosting (main → live)
+        if: github.ref == 'refs/heads/main'
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
+          channelId: live
+          projectId: sadhana-app-iyf
+
+      - name: Deploy to Firebase Hosting (dev → preview)
+        if: github.ref == 'refs/heads/dev'
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
+          channelId: dev-preview
+          projectId: sadhana-app-iyf
