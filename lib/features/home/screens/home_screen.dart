@@ -154,11 +154,10 @@ class _DashboardTab extends StatelessWidget {
                 padding: const EdgeInsets.only(right: 16),
                 child: CircleAvatar(
                   radius: 18,
-                  backgroundImage: user?.photoURL != null ? NetworkImage(user!.photoURL!) : null,
+                  backgroundImage: user?.photoURL != null
+                      ? NetworkImage(user!.photoURL!) as ImageProvider
+                      : const AssetImage('assets/images/iyf_logo.jpg'),
                   backgroundColor: AppColors.secondary,
-                  child: user?.photoURL == null
-                      ? const Icon(Icons.person, color: Colors.white, size: 20)
-                      : null,
                 ),
               ),
             ],

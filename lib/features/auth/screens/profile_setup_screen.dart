@@ -89,15 +89,11 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 // Header
                 Center(
                   child: Column(children: [
-                    Container(
-                      width: 72, height: 72,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [AppColors.primary, Color(0xFF6B21A8)],
-                        ),
-                        borderRadius: BorderRadius.circular(20),
+                    ClipOval(
+                      child: Image.asset(
+                        'assets/images/iyf_logo.jpg',
+                        width: 80, height: 80, fit: BoxFit.cover,
                       ),
-                      child: const Icon(Icons.person_add_rounded, color: Colors.white, size: 36),
                     ),
                     const SizedBox(height: 16),
                     const Text('Complete Your Profile',

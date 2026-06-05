@@ -59,6 +59,14 @@ class _LoginScreenState extends State<LoginScreen> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
+                  // IYF Logo
+                  ClipOval(
+                    child: Image.asset(
+                      'assets/images/iyf_logo.jpg',
+                      width: 100, height: 100, fit: BoxFit.cover,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   const Text(
                     AppStrings.appName,
                     style: TextStyle(

@@ -43,10 +43,9 @@ class ProfileScreen extends StatelessWidget {
                       CircleAvatar(
                         radius: 42,
                         backgroundColor: Colors.white24,
-                        backgroundImage: user?.photoURL != null ? NetworkImage(user!.photoURL!) : null,
-                        child: user?.photoURL == null
-                            ? const Icon(Icons.person, size: 40, color: Colors.white)
-                            : null,
+                        backgroundImage: user?.photoURL != null
+                            ? NetworkImage(user!.photoURL!) as ImageProvider
+                            : const AssetImage('assets/images/iyf_logo.jpg'),
                       ),
                       const SizedBox(height: 10),
                       Text(
