@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "554264804185",
+    "project_id": "sadhana-app-iyf",
+    "storage_bucket": "sadhana-app-iyf.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:554264804185:android:284a37a9d92275bfc52a48",
+        "android_client_info": {
+          "package_name": "com.iyf.sadhana_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAzESBg-02XmC6CxqmjZXls2hitxgxlySE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

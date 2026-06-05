@@ -1,0 +1,67 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── helpers ──────────────────────────────────────────────────────────
+    function isLoggedIn() {
+      return request.auth != null;
+    }
+    function isOwner(uid) {
+      return request.auth.uid == uid;
+    }
+    function isAdmin() {
+      return isLoggedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // ── users ─────────────────────────────────────────────────────────────
+    // Students can read/write their own profile.
+    // Admins can read any profile.
+    match /users/{uid} {
+      allow read:  if isLoggedIn() && (isOwner(uid) || isAdmin());
+      allow write: if isLoggedIn() && isOwner(uid);
+
+      // ── users/{uid}/sadhana ─────────────────────────────────────────────
+      // Each student owns their own sadhana subcollection.
+      // Admins can read any student's history.
+      match /sadhana/{entryId} {
+        allow read:   if isLoggedIn() && (isOwner(uid) || isAdmin());
+        allow create: if isLoggedIn() && isOwner(uid);
+        allow update: if isLoggedIn() && isOwner(uid);
+        allow delete: if false;   // no deletions allowed
+      }
+    }
+
+    // ── sadhana_logs ─────────────────────────────────────────────────────
+    // Top-level mirror. Written by the app alongside the subcollection.
+    // Admins and mentors can read all. Only owner can write their own log.
+    match /sadhana_logs/{logId} {
+      allow read:   if isLoggedIn() &&
+                       (request.auth.uid == resource.data.uid || isAdmin());
+      allow write:  if isLoggedIn() &&
+                       request.auth.uid == request.resource.data.uid;
+      allow delete: if false;
+    }
+
+    // ── events ───────────────────────────────────────────────────────────
+    // Any logged-in user can read. Only admins can create/edit.
+    match /events/{eventId} {
+      allow read:   if isLoggedIn();
+      allow write:  if isAdmin();
+    }
+
+    // ── content ──────────────────────────────────────────────────────────
+    // Any logged-in user can read. Only admins can create/edit.
+    match /content/{itemId} {
+      allow read:   if isLoggedIn();
+      allow write:  if isAdmin();
+    }
+
+    // ── announcements ─────────────────────────────────────────────────────
+    // Any logged-in user can read. Only admins can create/edit.
+    match /announcements/{annoId} {
+      allow read:   if isLoggedIn();
+      allow write:  if isAdmin();
+    }
+  }
+}
