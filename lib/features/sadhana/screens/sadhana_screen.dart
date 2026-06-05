@@ -480,25 +480,8 @@ class _TodayLogTabState extends State<_TodayLogTab> {
               onDec: () => setState(() => _freeTimeMin = (_freeTimeMin - 5).clamp(0, 480)),
               onInc: () => setState(() => _freeTimeMin = (_freeTimeMin + 5).clamp(0, 480))),
             const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: const Color(0xFF0891B2).withOpacity(0.06),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('Facilitator\'s Guidance',
-                    style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600,
-                        fontSize: 13, color: Color(0xFF0891B2))),
-                const SizedBox(height: 6),
-                TextField(
-                  controller: _facilitatorCtrl, maxLines: 3,
-                  decoration: const InputDecoration(
-                    hintText: 'Mentor fills this: guidance for the devotee\'s free time...',
-                    hintStyle: TextStyle(fontFamily: 'Poppins', fontSize: 12),
-                  ),
-                ),
-              ]),
+            _FacilitatorGuidanceBox(
+              existingNote: svc.todayEntry?.facilitatorNote ?? '',
             ),
           ]),
         ),
@@ -524,6 +507,44 @@ class _TodayLogTabState extends State<_TodayLogTab> {
           label: Text(_submitting ? 'Submitting...' : 'Submit Sadhana'),
         ),
         const SizedBox(height: 32),
+      ]),
+    );
+  }
+}
+
+// Read-only facilitator guidance box (students cannot edit)
+class _FacilitatorGuidanceBox extends StatelessWidget {
+  final String existingNote;
+  const _FacilitatorGuidanceBox({required this.existingNote});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0891B2).withOpacity(0.06),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFF0891B2).withOpacity(0.2)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          const Icon(Icons.lock_rounded, size: 14, color: Color(0xFF0891B2)),
+          const SizedBox(width: 6),
+          const Text("Facilitator's Guidance",
+              style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600,
+                  fontSize: 13, color: Color(0xFF0891B2))),
+        ]),
+        const SizedBox(height: 8),
+        existingNote.isEmpty
+            ? const Text(
+                'Your facilitator will add guidance for your free time here.',
+                style: TextStyle(fontFamily: 'Poppins', fontSize: 12,
+                    color: AppColors.textSecondary, fontStyle: FontStyle.italic))
+            : Text(existingNote,
+                style: const TextStyle(fontFamily: 'Poppins', fontSize: 13, height: 1.5)),
+        const SizedBox(height: 6),
+        const Text('Only your facilitator can edit this field.',
+            style: TextStyle(fontFamily: 'Poppins', fontSize: 11, color: AppColors.textSecondary)),
       ]),
     );
   }

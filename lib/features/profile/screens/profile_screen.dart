@@ -5,6 +5,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
+import '../../../core/constants/facilitators.dart';
+import '../../auth/screens/profile_setup_screen.dart';
 import '../../auth/services/auth_service.dart';
 import '../../sadhana/services/sadhana_service.dart';
 
@@ -67,7 +69,18 @@ class ProfileScreen extends StatelessWidget {
                 _StatsRow(streakCount: sadhanaService.streakCount, historyCount: sadhanaService.history.length),
                 const SizedBox(height: 20),
                 const _SectionTitle('Account'),
-                _SettingsTile(icon: Icons.person_outline_rounded, title: 'Edit Profile', onTap: () {}),
+                _SettingsTile(
+                  icon: Icons.person_outline_rounded,
+                  title: 'Edit Profile',
+                  onTap: () => showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (_) => _EditProfileSheet(
+                      onSave: (data) => context.read<AuthService>().updateProfile(data),
+                    ),
+                  ),
+                ),
                 _SettingsTile(icon: Icons.notifications_outlined, title: 'Notifications', onTap: () {}),
                 _SettingsTile(icon: Icons.language_rounded, title: 'Language', onTap: () {}),
                 const SizedBox(height: 16),
@@ -181,6 +194,95 @@ class _SettingsTile extends StatelessWidget {
         trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary),
         onTap: onTap,
       ),
+    );
+  }
+}
+
+// ── Edit Profile bottom sheet ─────────────────────────────────────────────────
+class _EditProfileSheet extends StatefulWidget {
+  final Future<void> Function(Map<String, dynamic>) onSave;
+  const _EditProfileSheet({required this.onSave});
+  @override State<_EditProfileSheet> createState() => _EditProfileSheetState();
+}
+
+class _EditProfileSheetState extends State<_EditProfileSheet> {
+  final _groupCtrl  = TextEditingController();
+  final _mobileCtrl = TextEditingController();
+  Facilitator? _facilitator;
+  bool _saving = false;
+
+  @override
+  void dispose() { _groupCtrl.dispose(); _mobileCtrl.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.only(
+          left: 24, right: 24, top: 24, bottom: MediaQuery.of(context).viewInsets.bottom + 24),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Text('Edit Profile', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, fontFamily: 'Poppins')),
+        const SizedBox(height: 4),
+        const Text('Name and age can only be changed by contacting admin.',
+            style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontFamily: 'Poppins')),
+        const SizedBox(height: 20),
+        TextField(
+          controller: _groupCtrl,
+          decoration: const InputDecoration(
+            labelText: 'Group Name',
+            prefixIcon: Icon(Icons.group_rounded, color: AppColors.textSecondary),
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _mobileCtrl,
+          keyboardType: TextInputType.phone,
+          decoration: const InputDecoration(
+            labelText: 'Mobile No.',
+            prefixIcon: Icon(Icons.phone_rounded, color: AppColors.textSecondary),
+          ),
+        ),
+        const SizedBox(height: 12),
+        DropdownButtonFormField<Facilitator>(
+          value: _facilitator,
+          isExpanded: true,
+          decoration: const InputDecoration(
+            labelText: 'Change Facilitator',
+            prefixIcon: Icon(Icons.supervisor_account_rounded, color: AppColors.textSecondary),
+          ),
+          items: kFacilitators.map((f) => DropdownMenuItem(
+            value: f,
+            child: Text(f.displayName,
+                style: const TextStyle(fontSize: 13, fontFamily: 'Poppins'),
+                overflow: TextOverflow.ellipsis),
+          )).toList(),
+          onChanged: (v) => setState(() => _facilitator = v),
+        ),
+        const SizedBox(height: 20),
+        SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: ElevatedButton(
+            onPressed: _saving ? null : () async {
+              setState(() => _saving = true);
+              final data = <String, dynamic>{};
+              if (_groupCtrl.text.trim().isNotEmpty) data['groupName'] = _groupCtrl.text.trim();
+              if (_mobileCtrl.text.trim().isNotEmpty) data['phone'] = _mobileCtrl.text.trim();
+              if (_facilitator != null) {
+                data['facilitatorName']    = _facilitator!.dikshitName;
+                data['facilitatorDisplay'] = _facilitator!.displayName;
+              }
+              if (data.isNotEmpty) await widget.onSave(data);
+              if (mounted) Navigator.pop(context);
+            },
+            child: Text(_saving ? 'Saving...' : 'Save Changes',
+                style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600)),
+          ),
+        ),
+      ]),
     );
   }
 }
