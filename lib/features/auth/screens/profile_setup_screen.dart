@@ -57,7 +57,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         'groupName':         _group!.name,
         'groupCode':         _group!.code,
         'phone':             _mobileCtrl.text.trim(),
-        'role':              _category!.name,
+        'sadhanaCategory':   _category!.name,
         'facilitatorName':   _facilitator!.dikshitName,
         'facilitatorDisplay': _facilitator!.displayName,
         'profileComplete':   true,

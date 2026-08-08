@@ -90,7 +90,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 48),
                   _GoogleSignInButton(loading: _loading, onTap: _signInWithGoogle),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
+                  TextButton(
+                    onPressed: () => context.push('/facilitator-login'),
+                    child: const Text('Facilitator / Admin Login',
+                        style: TextStyle(color: Colors.white70, fontFamily: 'Poppins', fontSize: 13)),
+                  ),
+                  const SizedBox(height: 8),
                   Text(
                     'By continuing, you agree to our Terms of Service\nand Privacy Policy.',
                     textAlign: TextAlign.center,

@@ -5,8 +5,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../features/auth/screens/splash_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
+import '../../features/auth/screens/facilitator_login_screen.dart';
 import '../../features/auth/screens/profile_setup_screen.dart';
 import '../../features/home/screens/home_screen.dart';
+import '../../features/admin/screens/student_list_screen.dart';
+import '../../features/admin/screens/facilitator_dashboard_screen.dart';
+import '../../features/admin/screens/student_detail_screen.dart';
+import '../../features/admin/screens/change_password_screen.dart';
+import '../constants/access_level.dart';
 
 class AppRouter {
   static final GoRouter router = GoRouter(
@@ -15,34 +21,62 @@ class AppRouter {
       final user = FirebaseAuth.instance.currentUser;
       final loc  = state.matchedLocation;
 
-      // Not logged in → force login
+      const publicRoutes = {'/login', '/splash', '/facilitator-login'};
+
+      // Not logged in → force to student login (facilitator-login stays
+      // reachable directly since it's its own entry point).
       if (user == null) {
-        if (loc == '/login' || loc == '/splash') return null;
-        return '/login';
+        return publicRoutes.contains(loc) ? null : '/login';
       }
 
-      // Logged in but on splash/login → check profile
-      if (loc == '/splash' || loc == '/login') {
+      final accessLevel = await _getAccessLevel(user.uid);
+
+      // Facilitators/super_admins never go through student profile-setup —
+      // land them straight on their own dashboard from the public routes.
+      if (accessLevel != AccessLevel.student && publicRoutes.contains(loc)) {
+        return accessLevel == AccessLevel.superAdmin ? '/admin' : '/facilitator';
+      }
+
+      // A student who lands on /splash, /login, or /facilitator-login
+      // (e.g. already had a session) goes through the normal profile check.
+      if (accessLevel == AccessLevel.student && publicRoutes.contains(loc)) {
         final profileComplete = await _isProfileComplete(user.uid);
         return profileComplete ? '/home' : '/profile-setup';
       }
 
-      // Already on profile-setup → allow
-      if (loc == '/profile-setup') return null;
+      if (loc == '/profile-setup') return null; // always allowed once logged in
 
-      // On home but profile not complete → redirect
-      if (loc == '/home') {
+      if (loc == '/home' && accessLevel == AccessLevel.student) {
         final profileComplete = await _isProfileComplete(user.uid);
         if (!profileComplete) return '/profile-setup';
       }
 
+      // Route-level access control: a plain student typing /admin or
+      // /facilitator in the URL bar gets bounced back, not let through.
+      if (loc == '/admin' && accessLevel != AccessLevel.superAdmin) return '/home';
+      if (loc == '/facilitator' && accessLevel == AccessLevel.student) return '/home';
+
       return null;
     },
     routes: [
-      GoRoute(path: '/splash',        builder: (_, __) => const SplashScreen()),
-      GoRoute(path: '/login',         builder: (_, __) => const LoginScreen()),
-      GoRoute(path: '/profile-setup', builder: (_, __) => const ProfileSetupScreen()),
-      GoRoute(path: '/home',          builder: (_, __) => const HomeScreen()),
+      GoRoute(path: '/splash',            builder: (_, __) => const SplashScreen()),
+      GoRoute(path: '/login',             builder: (_, __) => const LoginScreen()),
+      GoRoute(path: '/facilitator-login', builder: (_, __) => const FacilitatorLoginScreen()),
+      GoRoute(path: '/profile-setup',     builder: (_, __) => const ProfileSetupScreen()),
+      GoRoute(path: '/home',              builder: (_, __) => const HomeScreen()),
+      GoRoute(path: '/admin',             builder: (_, __) => const StudentListScreen(title: 'All Students')),
+      GoRoute(path: '/facilitator',       builder: (_, __) => const FacilitatorDashboardScreen()),
+      GoRoute(
+        path: '/student-detail',
+        builder: (_, state) {
+          final extra = state.extra as Map<String, dynamic>? ?? {};
+          return StudentDetailScreen(
+            uid: extra['uid'] as String? ?? '',
+            name: extra['name'] as String? ?? '',
+          );
+        },
+      ),
+      GoRoute(path: '/change-password', builder: (_, __) => const ChangePasswordScreen()),
     ],
     errorBuilder: (context, state) => Scaffold(
       body: Center(child: Text('Page not found: ${state.error}')),
@@ -55,6 +89,15 @@ class AppRouter {
       return doc.data()?['profileComplete'] == true;
     } catch (_) {
       return false;
+    }
+  }
+
+  static Future<AccessLevel> _getAccessLevel(String uid) async {
+    try {
+      final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      return AccessLevel.fromString(doc.data()?['accessLevel'] as String?);
+    } catch (_) {
+      return AccessLevel.student;
     }
   }
 }

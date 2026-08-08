@@ -58,3 +58,8 @@ scripts/package.json
 # Environment
 .env
 .env.*
+
+# Confidential — never commit generated login credentials
+scripts/*credentials*
+scripts/*CREDENTIALS*
+*.credentials.txt

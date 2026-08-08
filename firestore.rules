@@ -9,59 +9,83 @@ service cloud.firestore {
     function isOwner(uid) {
       return request.auth.uid == uid;
     }
-    function isAdmin() {
-      return isLoggedIn() &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    // accessLevel is a PERMISSION field — completely separate from
+    // sadhanaCategory (the student/job/etc. sadhna-card category). See
+    // lib/core/constants/access_level.dart for the app-side equivalent.
+    function myAccessLevel() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.accessLevel;
+    }
+    function isSuperAdmin() {
+      return isLoggedIn() && myAccessLevel() == 'super_admin';
+    }
+    // A facilitator's own user doc stores their `facilitatorDikshitName`,
+    // matched against the STUDENT's `facilitatorName` field (set when the
+    // student picks their facilitator during profile setup).
+    function myFacilitatorDikshitName() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.facilitatorDikshitName;
+    }
+    function isFacilitatorOfStudent(studentUid) {
+      return isLoggedIn() && myAccessLevel() == 'facilitator' &&
+        myFacilitatorDikshitName() == get(/databases/$(database)/documents/users/$(studentUid)).data.facilitatorName;
+    }
+    function isFacilitatorOfLog(logData) {
+      return isLoggedIn() && myAccessLevel() == 'facilitator' &&
+        myFacilitatorDikshitName() == get(/databases/$(database)/documents/users/$(logData.uid)).data.facilitatorName;
+    }
+    // A facilitator/admin may only ever touch the facilitatorNote field on
+    // an entry they don't own — never the student's own numbers.
+    function onlyChangedFacilitatorNote() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['facilitatorNote']);
     }
 
     // ── users ─────────────────────────────────────────────────────────────
-    // Students can read/write their own profile.
-    // Admins can read any profile.
     match /users/{uid} {
-      allow read:  if isLoggedIn() && (isOwner(uid) || isAdmin());
+      allow read:  if isLoggedIn() && (isOwner(uid) || isSuperAdmin() || isFacilitatorOfStudent(uid));
       allow write: if isLoggedIn() && isOwner(uid);
 
       // ── users/{uid}/sadhana ─────────────────────────────────────────────
-      // Each student owns their own sadhana subcollection.
-      // Admins can read any student's history.
       match /sadhana/{entryId} {
-        allow read:   if isLoggedIn() && (isOwner(uid) || isAdmin());
+        allow read:   if isLoggedIn() && (isOwner(uid) || isSuperAdmin() || isFacilitatorOfStudent(uid));
         allow create: if isLoggedIn() && isOwner(uid);
-        allow update: if isLoggedIn() && isOwner(uid);
+        allow update: if isLoggedIn() && (
+          isOwner(uid) ||
+          ((isSuperAdmin() || isFacilitatorOfStudent(uid)) && onlyChangedFacilitatorNote())
+        );
         allow delete: if false;   // no deletions allowed
       }
     }
 
     // ── sadhana_logs ─────────────────────────────────────────────────────
-    // Top-level mirror. Written by the app alongside the subcollection.
-    // Admins and mentors can read all. Only owner can write their own log.
+    // Top-level mirror, keyed by {uid}_{dateKey}. Written by the app
+    // alongside the subcollection.
     match /sadhana_logs/{logId} {
       allow read:   if isLoggedIn() &&
-                       (request.auth.uid == resource.data.uid || isAdmin());
-      allow write:  if isLoggedIn() &&
-                       request.auth.uid == request.resource.data.uid;
+                       (request.auth.uid == resource.data.uid || isSuperAdmin() || isFacilitatorOfLog(resource.data));
+      allow create: if isLoggedIn() && request.auth.uid == request.resource.data.uid;
+      allow update: if isLoggedIn() && (
+        request.auth.uid == request.resource.data.uid ||
+        ((isSuperAdmin() || isFacilitatorOfLog(resource.data)) && onlyChangedFacilitatorNote())
+      );
       allow delete: if false;
     }
 
     // ── events ───────────────────────────────────────────────────────────
-    // Any logged-in user can read. Only admins can create/edit.
+    // Any logged-in user can read. Only super_admins can create/edit.
     match /events/{eventId} {
       allow read:   if isLoggedIn();
-      allow write:  if isAdmin();
+      allow write:  if isSuperAdmin();
     }
 
     // ── content ──────────────────────────────────────────────────────────
-    // Any logged-in user can read. Only admins can create/edit.
     match /content/{itemId} {
       allow read:   if isLoggedIn();
-      allow write:  if isAdmin();
+      allow write:  if isSuperAdmin();
     }
 
     // ── announcements ─────────────────────────────────────────────────────
-    // Any logged-in user can read. Only admins can create/edit.
     match /announcements/{annoId} {
       allow read:   if isLoggedIn();
-      allow write:  if isAdmin();
+      allow write:  if isSuperAdmin();
     }
   }
 }

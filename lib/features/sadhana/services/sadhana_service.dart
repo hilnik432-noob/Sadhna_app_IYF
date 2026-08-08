@@ -4,10 +4,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import '../models/sadhana_entry.dart';
+import 'sadhana_repository.dart';
 
 class SadhanaService extends ChangeNotifier {
   final FirebaseFirestore _db      = FirebaseFirestore.instance;
   final FirebaseStorage   _storage = FirebaseStorage.instance;
+  final SadhanaRepository _repo    = SadhanaRepository();
 
   SadhanaEntry?      _todayEntry;
   List<SadhanaEntry> _history     = [];
@@ -22,18 +24,22 @@ class SadhanaService extends ChangeNotifier {
   String get _uid  => FirebaseAuth.instance.currentUser?.uid ?? '';
   String get _name => FirebaseAuth.instance.currentUser?.displayName ?? '';
 
-  String _dateKey(DateTime d) =>
-      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+  // Shared with SadhanaRepository — kept as one implementation there,
+  // called through this thin alias so existing call sites below don't change.
+  String _dateKey(DateTime d) => SadhanaRepository.dateKey(d);
 
   CollectionReference get _userSadhanaRef =>
       _db.collection('users').doc(_uid).collection('sadhana');
   CollectionReference get _logsRef => _db.collection('sadhana_logs');
 
-  // ── Role ─────────────────────────────────────────────────────────────────
+  // ── Sadhna category (UserRole) ────────────────────────────────────────────
+  // NOTE: this is stored under 'sadhanaCategory', deliberately NOT 'role' —
+  // 'role' would collide with the unrelated accessLevel/permission concept
+  // (see core/constants/access_level.dart).
   Future<void> loadUserRole() async {
     if (_uid.isEmpty) return;
     final doc = await _db.collection('users').doc(_uid).get();
-    final roleStr = doc.data()?['role'] as String? ?? 'student';
+    final roleStr = doc.data()?['sadhanaCategory'] as String? ?? 'student';
     try {
       _userRole = UserRole.values.firstWhere((r) => r.name == roleStr);
     } catch (_) {
@@ -45,7 +51,7 @@ class SadhanaService extends ChangeNotifier {
   Future<void> saveUserRole(UserRole role) async {
     if (_uid.isEmpty) return;
     _userRole = role;
-    await _db.collection('users').doc(_uid).update({'role': role.name});
+    await _db.collection('users').doc(_uid).update({'sadhanaCategory': role.name});
     notifyListeners();
   }
 
@@ -100,11 +106,7 @@ class SadhanaService extends ChangeNotifier {
   // ── Load history ──────────────────────────────────────────────────────────
   Future<void> loadHistory() async {
     if (_uid.isEmpty) return;
-    final snap = await _userSadhanaRef
-        .orderBy('date', descending: true).limit(60).get();
-    _history = snap.docs
-        .map((d) => SadhanaEntry.fromMap(d.id, d.data() as Map<String, dynamic>))
-        .toList();
+    _history = await _repo.fetchHistory(_uid, limit: 60);
     _calculateStreak();
     notifyListeners();
   }
@@ -163,9 +165,15 @@ class SadhanaService extends ChangeNotifier {
   }
 
   // ── Facilitator note (written by mentor) ──────────────────────────────────
-  Future<void> updateFacilitatorNote(String logDocId, String note) async {
-    await _userSadhanaRef.doc(logDocId).update({'facilitatorNote': note});
-    await _logsRef.doc(logDocId).update({'facilitatorNote': note});
+  // Kept here for completeness (a student's own service technically could
+  // call this) but in practice it's the facilitator/admin dashboards
+  // (AdminService) that call SadhanaRepository.writeFacilitatorNote — a
+  // student never has permission to edit their own facilitatorNote field
+  // (see firestore.rules).
+  Future<void> updateFacilitatorNote(SadhanaEntry entry, String note) async {
+    await _repo.writeFacilitatorNote(
+      studentUid: _uid, logDocId: entry.id, entryDate: entry.date, note: note,
+    );
     await loadHistory();
   }
 

@@ -1,3 +1,18 @@
+/// Internal-only email domain used purely as a Firebase Auth login
+/// identifier for facilitators who have no real inbox on file — never used
+/// to actually send mail. See scripts/seed_facilitator_accounts.py, which
+/// mirrors this exact slugging rule so both sides always agree on the
+/// login email for a given facilitator.
+const _facilitatorLoginDomain = 'facilitators.sadhana-app-iyf.internal';
+
+/// "HG Sachi Priya Prabhu Ji" -> "hg_sachi_priya_prabhu_ji"
+/// Kept in sync with scripts/seed_facilitator_accounts.py's slugify().
+String slugifyFacilitatorName(String dikshitName) {
+  final ascii = dikshitName.toLowerCase();
+  final cleaned = ascii.replaceAll(RegExp(r'[^a-z0-9]+'), '_');
+  return cleaned.replaceAll(RegExp(r'^_+|_+$'), '');
+}
+
 class Facilitator {
   final String dikshitName;
   final String materialName;
@@ -13,6 +28,21 @@ class Facilitator {
   String get displayName => hasDikshit
       ? '$dikshitName (${materialName})'
       : dikshitName;
+
+  /// Hidden Firebase Auth login identifier for the facilitator-login screen
+  /// (dropdown shows [displayName]; this is what's actually sent to
+  /// signInWithEmailAndPassword under the hood).
+  String get loginEmail => '${slugifyFacilitatorName(dikshitName)}@$_facilitatorLoginDomain';
+}
+
+/// Looks up a Facilitator by its exact dikshitName (the value students'
+/// `facilitatorName` field is set to during profile setup). Used to resolve
+/// which real-world facilitator a logged-in account represents.
+Facilitator? facilitatorByDikshitName(String dikshitName) {
+  for (final f in kFacilitators) {
+    if (f.dikshitName == dikshitName) return f;
+  }
+  return null;
 }
 
 const kFacilitators = [
