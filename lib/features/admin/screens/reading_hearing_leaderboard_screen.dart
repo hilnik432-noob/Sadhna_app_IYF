@@ -4,10 +4,13 @@ import '../../../core/constants/app_colors.dart';
 import '../../sadhana/services/reading_hearing_stats.dart';
 import '../services/admin_service.dart';
 
-/// super_admin-only report: every student ranked by combined reading +
-/// hearing minutes over the last 7 days, highest investment of time first.
+/// Every student ranked by combined reading + hearing minutes over the
+/// last 7 days, highest investment of time first. Shared by both roles:
+///   - super_admin: facilitatorDikshitName = null -> every student
+///   - facilitator: facilitatorDikshitName = their own name -> only theirs
 class ReadingHearingLeaderboardScreen extends StatefulWidget {
-  const ReadingHearingLeaderboardScreen({super.key});
+  final String? facilitatorDikshitName;
+  const ReadingHearingLeaderboardScreen({super.key, this.facilitatorDikshitName});
 
   @override
   State<ReadingHearingLeaderboardScreen> createState() => _ReadingHearingLeaderboardScreenState();
@@ -20,13 +23,17 @@ class _ReadingHearingLeaderboardScreenState extends State<ReadingHearingLeaderbo
   @override
   void initState() {
     super.initState();
-    _future = _adminService.fetchReadingHearingLeaderboard();
+    _future = _adminService.fetchReadingHearingLeaderboard(
+      facilitatorDikshitName: widget.facilitatorDikshitName,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Reading & Hearing — Weekly Report')),
+      appBar: AppBar(title: Text(widget.facilitatorDikshitName == null
+          ? 'Reading & Hearing — Weekly Report (All Students)'
+          : 'Reading & Hearing — Weekly Report (My Students)')),
       body: FutureBuilder<List<StudentReadingHearingTotal>>(
         future: _future,
         builder: (context, snap) {

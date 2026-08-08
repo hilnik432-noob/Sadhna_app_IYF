@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import '../../../core/constants/access_level.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/constants/facilitators.dart';
@@ -68,6 +69,7 @@ class ProfileScreen extends StatelessWidget {
               delegate: SliverChildListDelegate([
                 _StatsRow(streakCount: sadhanaService.streakCount, historyCount: sadhanaService.history.length),
                 const SizedBox(height: 20),
+                const _BackToDashboardTile(),
                 const _SectionTitle('Account'),
                 _SettingsTile(
                   icon: Icons.person_outline_rounded,
@@ -154,6 +156,36 @@ class _StatCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Shown only to facilitator/super_admin accounts that are ALSO practicing
+/// students (both real accounts in this app are dual-role) — a way back
+/// to their dashboard from the normal student flow, mirroring the "My Own
+/// Sadhna Log" button added on their dashboard's side. Renders nothing for
+/// plain student accounts.
+class _BackToDashboardTile extends StatelessWidget {
+  const _BackToDashboardTile();
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<AccessLevel>(
+      future: context.read<AuthService>().getAccessLevel(),
+      builder: (context, snap) {
+        final level = snap.data;
+        if (level == null || level == AccessLevel.student) return const SizedBox.shrink();
+
+        final isSuperAdmin = level == AccessLevel.superAdmin;
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: _SettingsTile(
+            icon: Icons.admin_panel_settings_rounded,
+            title: isSuperAdmin ? 'Go to Admin Dashboard' : 'Go to Facilitator Dashboard',
+            onTap: () => context.push(isSuperAdmin ? '/admin' : '/facilitator'),
+          ),
+        );
+      },
     );
   }
 }

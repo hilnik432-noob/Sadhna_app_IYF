@@ -54,11 +54,17 @@ class _StudentListScreenState extends State<StudentListScreen> {
       appBar: AppBar(
         title: Text(widget.title),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.self_improvement_rounded),
+            tooltip: 'My Own Sadhna Log',
+            onPressed: () => context.push('/home'),
+          ),
           if (widget.showLeaderboardButton)
             IconButton(
               icon: const Icon(Icons.leaderboard_rounded),
               tooltip: 'Reading & Hearing Report',
-              onPressed: () => context.push('/admin-report'),
+              onPressed: () => context.push('/admin-report',
+                  extra: {'facilitatorDikshitName': widget.facilitatorDikshitName}),
             ),
           if (_isPasswordLogin)
             IconButton(
