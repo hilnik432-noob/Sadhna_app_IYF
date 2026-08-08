@@ -35,3 +35,11 @@ enum AccessLevel {
   bool get canSeeOwnStudentsOnly => this == AccessLevel.facilitator;
   bool get canSeeAllStudents => this == AccessLevel.superAdmin;
 }
+
+/// The facilitators (by dikshitName) who are super_admins — shown on the
+/// separate Admin Login screen instead of the regular Facilitator Login
+/// dropdown. MUST stay in sync with SUPER_ADMIN_DIKSHIT_NAMES in
+/// scripts/seed_facilitator_accounts.py — both sides list the same two
+/// people by design, not derived from one shared source (Dart app vs.
+/// Python script can't literally share a constant).
+const kSuperAdminDikshitNames = {'Nitai Nimai Prabhu Ji', 'HG Vishuddh Parth Prabhuji'};

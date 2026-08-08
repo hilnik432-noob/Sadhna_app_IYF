@@ -6,6 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../features/auth/screens/splash_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/facilitator_login_screen.dart';
+import '../../features/auth/screens/admin_login_screen.dart';
 import '../../features/auth/screens/profile_setup_screen.dart';
 import '../../features/home/screens/home_screen.dart';
 import '../../features/admin/screens/student_list_screen.dart';
@@ -22,7 +23,7 @@ class AppRouter {
       final user = FirebaseAuth.instance.currentUser;
       final loc  = state.matchedLocation;
 
-      const publicRoutes = {'/login', '/splash', '/facilitator-login'};
+      const publicRoutes = {'/login', '/splash', '/facilitator-login', '/admin-login'};
 
       // Not logged in → force to student login (facilitator-login stays
       // reachable directly since it's its own entry point).
@@ -63,6 +64,7 @@ class AppRouter {
       GoRoute(path: '/splash',            builder: (_, __) => const SplashScreen()),
       GoRoute(path: '/login',             builder: (_, __) => const LoginScreen()),
       GoRoute(path: '/facilitator-login', builder: (_, __) => const FacilitatorLoginScreen()),
+      GoRoute(path: '/admin-login',       builder: (_, __) => const AdminLoginScreen()),
       GoRoute(path: '/profile-setup',     builder: (_, __) => const ProfileSetupScreen()),
       GoRoute(path: '/home',              builder: (_, __) => const HomeScreen()),
       GoRoute(

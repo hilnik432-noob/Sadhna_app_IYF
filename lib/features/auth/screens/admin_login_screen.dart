@@ -7,27 +7,26 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/facilitators.dart';
 import '../services/auth_service.dart';
 
-/// Login screen for regular facilitators — separate from both the
-/// student's Google Sign-In flow AND the super_admin-only AdminLoginScreen.
-/// The dropdown deliberately excludes kSuperAdminDikshitNames (they log in
-/// via /admin-login instead). Shows a DROPDOWN of facilitator names (never
-/// a dropdown of passwords — only the name picker is a dropdown, the
-/// password field below is a normal obscured text field) and signs in via
-/// AuthService.signInFacilitator, which maps the picked name to a hidden
-/// Firebase Auth login email under the hood.
-class FacilitatorLoginScreen extends StatefulWidget {
-  const FacilitatorLoginScreen({super.key});
+/// Dedicated super_admin login — separate page from FacilitatorLoginScreen
+/// per design request, even though the underlying mechanism is identical
+/// (dropdown name picker + password, via AuthService.signInFacilitator).
+/// The dropdown here is restricted to kSuperAdminDikshitNames only.
+class AdminLoginScreen extends StatefulWidget {
+  const AdminLoginScreen({super.key});
 
   @override
-  State<FacilitatorLoginScreen> createState() => _FacilitatorLoginScreenState();
+  State<AdminLoginScreen> createState() => _AdminLoginScreenState();
 }
 
-class _FacilitatorLoginScreenState extends State<FacilitatorLoginScreen> {
+class _AdminLoginScreenState extends State<AdminLoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _passwordCtrl = TextEditingController();
   Facilitator? _selected;
   bool _obscure = true;
   bool _loading = false;
+
+  List<Facilitator> get _superAdmins =>
+      kFacilitators.where((f) => kSuperAdminDikshitNames.contains(f.dikshitName)).toList();
 
   @override
   void dispose() {
@@ -40,7 +39,7 @@ class _FacilitatorLoginScreenState extends State<FacilitatorLoginScreen> {
     setState(() => _loading = true);
     try {
       await context.read<AuthService>().signInFacilitator(_selected!, _passwordCtrl.text);
-      if (mounted) context.go('/home'); // router redirect bounces to /admin or /facilitator
+      if (mounted) context.go('/home'); // router redirect bounces to /admin
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -58,7 +57,7 @@ class _FacilitatorLoginScreenState extends State<FacilitatorLoginScreen> {
       return 'Incorrect password.';
     }
     if (msg.contains('user-not-found')) {
-      return 'This facilitator account has not been set up yet.';
+      return 'This admin account has not been set up yet.';
     }
     return 'Please check your password and try again.';
   }
@@ -77,15 +76,13 @@ class _FacilitatorLoginScreenState extends State<FacilitatorLoginScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  ClipOval(
-                    child: Image.asset('assets/images/iyf_logo.jpg', width: 72, height: 72, fit: BoxFit.cover),
-                  ),
+                  const Icon(Icons.admin_panel_settings_rounded, size: 56, color: AppColors.primary),
                   const SizedBox(height: 20),
-                  const Text('Facilitator Login',
+                  const Text('Admin Login',
                       textAlign: TextAlign.center,
                       style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, fontFamily: 'Poppins')),
                   const SizedBox(height: 6),
-                  const Text('Select your name and enter your password.',
+                  const Text('Super admin access — select your name and enter your password.',
                       textAlign: TextAlign.center,
                       style: TextStyle(color: AppColors.textSecondary, fontSize: 13, fontFamily: 'Poppins')),
                   const SizedBox(height: 28),
@@ -95,11 +92,9 @@ class _FacilitatorLoginScreenState extends State<FacilitatorLoginScreen> {
                     isExpanded: true,
                     decoration: const InputDecoration(
                       labelText: 'Your Name',
-                      prefixIcon: Icon(Icons.supervisor_account_rounded, color: AppColors.textSecondary),
+                      prefixIcon: Icon(Icons.admin_panel_settings_outlined, color: AppColors.textSecondary),
                     ),
-                    items: kFacilitators
-                        .where((f) => !kSuperAdminDikshitNames.contains(f.dikshitName))
-                        .map((f) => DropdownMenuItem(
+                    items: _superAdmins.map((f) => DropdownMenuItem(
                       value: f,
                       child: Text(f.displayName,
                           style: const TextStyle(fontSize: 13, fontFamily: 'Poppins'),
@@ -146,8 +141,8 @@ class _FacilitatorLoginScreenState extends State<FacilitatorLoginScreen> {
                         style: TextStyle(fontFamily: 'Poppins', color: AppColors.textSecondary)),
                   ),
                   TextButton(
-                    onPressed: () => context.pushReplacement('/admin-login'),
-                    child: const Text('Admin Login instead',
+                    onPressed: () => context.pushReplacement('/facilitator-login'),
+                    child: const Text('Facilitator Login instead',
                         style: TextStyle(fontFamily: 'Poppins', color: AppColors.textSecondary)),
                   ),
                 ],

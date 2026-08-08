@@ -91,10 +91,21 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 48),
                   _GoogleSignInButton(loading: _loading, onTap: _signInWithGoogle),
                   const SizedBox(height: 16),
-                  TextButton(
-                    onPressed: () => context.push('/facilitator-login'),
-                    child: const Text('Facilitator / Admin Login',
-                        style: TextStyle(color: Colors.white70, fontFamily: 'Poppins', fontSize: 13)),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      TextButton(
+                        onPressed: () => context.push('/facilitator-login'),
+                        child: const Text('Facilitator Login',
+                            style: TextStyle(color: Colors.white70, fontFamily: 'Poppins', fontSize: 13)),
+                      ),
+                      const Text('|', style: TextStyle(color: Colors.white38)),
+                      TextButton(
+                        onPressed: () => context.push('/admin-login'),
+                        child: const Text('Admin Login',
+                            style: TextStyle(color: Colors.white70, fontFamily: 'Poppins', fontSize: 13)),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 8),
                   Text(
