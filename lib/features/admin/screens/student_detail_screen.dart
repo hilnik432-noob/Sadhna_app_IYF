@@ -208,6 +208,49 @@ class _LegendDot extends StatelessWidget {
   ]);
 }
 
+/// One labeled block of the full sadhna card (e.g. "Morning Program",
+/// "Sense Control") — groups related _DetailRow lines with a small
+/// section header, matching the sectioning the student sees when they
+/// FILL IN the card (see sadhana_screen.dart's _SectionCard), so the
+/// admin/facilitator view reads as the same card, just read-only.
+class _DetailSection extends StatelessWidget {
+  final String title;
+  final List<Widget> rows;
+  const _DetailSection({required this.title, required this.rows});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(title.toUpperCase(),
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700,
+                color: AppColors.textSecondary, letterSpacing: 0.6, fontFamily: 'Poppins')),
+        const SizedBox(height: 4),
+        ...rows,
+      ]),
+    );
+  }
+}
+
+class _DetailRow extends StatelessWidget {
+  final String label;
+  final String value;
+  const _DetailRow(this.label, this.value);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        SizedBox(width: 130, child: Text(label,
+            style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, fontWeight: FontWeight.w600))),
+        Expanded(child: Text(value, style: const TextStyle(fontFamily: 'Poppins', fontSize: 12))),
+      ]),
+    );
+  }
+}
+
 class _EntryCard extends StatelessWidget {
   final SadhanaEntry entry;
   final ValueChanged<SadhanaEntry> onEditNote;
@@ -228,9 +271,53 @@ class _EntryCard extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              if (e.sevaDescription.isNotEmpty) Text('Seva: ${e.sevaDescription}', style: const TextStyle(fontFamily: 'Poppins', fontSize: 13)),
-              if (e.hearingRemark.isNotEmpty) Text('Hearing: ${e.hearingRemark}', style: const TextStyle(fontFamily: 'Poppins', fontSize: 13)),
-              if (e.notes.isNotEmpty) Text('Notes: ${e.notes}', style: const TextStyle(fontFamily: 'Poppins', fontSize: 13)),
+              // ── Full sadhna card, every field the student filled in ──────
+              _DetailSection(title: 'Morning Program', rows: [
+                _DetailRow('Japa Rounds', '${e.japaRounds} rounds'),
+                _DetailRow('Mangal Aarti', e.mangalAarti ? 'Yes' : 'No'),
+                _DetailRow('Morning Program', e.morningProgram ? 'Yes' : 'No'),
+                _DetailRow('Wake-up Time', e.wakeUpTime.isEmpty ? '—' : e.wakeUpTime),
+              ]),
+              _DetailSection(title: 'Reading & Hearing', rows: [
+                _DetailRow('Reading', '${e.readingMinutes} min'),
+                _DetailRow('Hearing', '${e.hearingMinutes} min'),
+                if (e.hearingRemark.isNotEmpty) _DetailRow('Hearing Notes', e.hearingRemark),
+                if (e.hearingFile != null) _DetailRow('Notes File',
+                    e.hearingFile!.isExpired ? '${e.hearingFile!.name} (expired)' : e.hearingFile!.name),
+              ]),
+              if (e.studyMinutes > 0 || e.studyRemark.isNotEmpty)
+                _DetailSection(title: 'Study', rows: [
+                  _DetailRow('Study Time', '${e.studyMinutes} min'),
+                  if (e.studyRemark.isNotEmpty) _DetailRow('What studied', e.studyRemark),
+                ]),
+              if (e.jobMinutes > 0)
+                _DetailSection(title: 'Job / Work', rows: [
+                  _DetailRow('Work Time', '${e.jobMinutes} min'),
+                ]),
+              _DetailSection(title: 'Seva', rows: [
+                _DetailRow('Seva Time', '${e.sevaMinutes} min'),
+                if (e.sevaDescription.isNotEmpty) _DetailRow('What seva', e.sevaDescription),
+              ]),
+              _DetailSection(title: 'Sense Control', rows: [
+                _DetailRow('Senses engaged', '${e.senseControl.engagedCount}/5'),
+                _DetailRow('Ear',    e.senseControl.ear    ? 'Engaged' : 'Missed'),
+                _DetailRow('Eye',    e.senseControl.eye    ? 'Engaged' : 'Missed'),
+                _DetailRow('Nose',   e.senseControl.nose   ? 'Engaged' : 'Missed'),
+                _DetailRow('Tongue', e.senseControl.tongue ? 'Engaged' : 'Missed'),
+                _DetailRow('Skin',   e.senseControl.skin   ? 'Engaged' : 'Missed'),
+                if (e.senseControl.missed.isNotEmpty) _DetailRow('Missed engagement', e.senseControl.missed),
+                if (e.senseControl.wrongDone.isNotEmpty) _DetailRow('Wrong engagement', e.senseControl.wrongDone),
+              ]),
+              _DetailSection(title: 'Mobile (Time Pass)', rows: [
+                _DetailRow('Screen Time', '${e.mobileMinutes} min'),
+                if (e.mobileDescription.isNotEmpty) _DetailRow('What consumed', e.mobileDescription),
+                _DetailRow('Weekly Vow', 'reduce by ${e.mobileVowReduceMinutes} min/week'),
+              ]),
+              _DetailSection(title: 'Free Time', rows: [
+                _DetailRow('Free Time Left', '${e.freeTimeMinutes} min'),
+              ]),
+              if (e.notes.isNotEmpty)
+                _DetailSection(title: 'Additional Notes', rows: [_DetailRow('Notes', e.notes)]),
               const SizedBox(height: 10),
               Container(
                 width: double.infinity,
