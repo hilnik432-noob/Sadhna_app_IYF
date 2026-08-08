@@ -133,26 +133,30 @@ def promote_existing_super_admins(db) -> list[str]:
 
 
 def create_facilitator_accounts(db) -> list[tuple[str, str, str]]:
-    """Returns list of (dikshit_name, login_email, password) for newly created accounts only."""
+    """
+    Returns list of (dikshit_name, login_email, password) for newly created
+    accounts only. Every facilitator gets a dropdown+password login here —
+    INCLUDING the two super_admins, who also separately have their existing
+    Google account promoted (promote_existing_super_admins) as an alternate
+    login path. Both paths lead to the same accessLevel, so either works.
+    """
     created = []
     for dikshit_name, material_name in FACILITATORS:
-        if dikshit_name in SUPER_ADMIN_DIKSHIT_NAMES:
-            continue  # handled by promote_existing_super_admins instead
-
         email = login_email(dikshit_name)
         try:
-            existing = auth.get_user_by_email(email)
+            auth.get_user_by_email(email)
             continue  # already created in a previous run — leave untouched
         except auth.UserNotFoundError:
             pass
 
+        access_level = "super_admin" if dikshit_name in SUPER_ADMIN_DIKSHIT_NAMES else "facilitator"
         password = generate_password()
         user_record = auth.create_user(email=email, password=password, display_name=dikshit_name)
         db.collection("users").document(user_record.uid).set({
             "uid": user_record.uid,
             "name": material_name,
             "email": email,
-            "accessLevel": "facilitator",
+            "accessLevel": access_level,
             "facilitatorDikshitName": dikshit_name,
         })
         created.append((dikshit_name, email, password))
@@ -175,10 +179,16 @@ def main() -> int:
         print("No existing accounts matched for super_admin promotion (already done, or emails changed).")
 
     if created:
-        with OUTPUT_PATH.open("w", encoding="utf-8") as f:
-            f.write("CONFIDENTIAL — facilitator login credentials. Distribute privately.\n")
-            f.write("Do NOT commit this file or paste it anywhere shared.\n")
-            f.write("Login screen: dropdown shows the facilitator's own name; enter the password below.\n\n")
+        # Append, never overwrite — a prior run's file may hold passwords
+        # for accounts already distributed; clobbering it would strand them.
+        is_new_file = not OUTPUT_PATH.exists()
+        with OUTPUT_PATH.open("a", encoding="utf-8") as f:
+            if is_new_file:
+                f.write("CONFIDENTIAL — facilitator login credentials. Distribute privately.\n")
+                f.write("Do NOT commit this file or paste it anywhere shared.\n")
+                f.write("Login screen: dropdown shows the facilitator's own name; enter the password below.\n\n")
+            else:
+                f.write(f"--- appended: {len(created)} new account(s) ---\n\n")
             for dikshit_name, email, password in created:
                 f.write(f"{dikshit_name}\n  login email (hidden): {email}\n  password: {password}\n\n")
         print(f"\nCreated {len(created)} new facilitator accounts.")

@@ -51,6 +51,9 @@ dependencies:
   connectivity_plus: ^6.0.3
   cupertino_icons: ^1.0.6
 
+  # Charts (admin/facilitator reading & hearing reports)
+  fl_chart: ^0.68.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

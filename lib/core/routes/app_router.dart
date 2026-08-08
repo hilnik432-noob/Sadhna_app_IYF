@@ -12,6 +12,7 @@ import '../../features/admin/screens/student_list_screen.dart';
 import '../../features/admin/screens/facilitator_dashboard_screen.dart';
 import '../../features/admin/screens/student_detail_screen.dart';
 import '../../features/admin/screens/change_password_screen.dart';
+import '../../features/admin/screens/reading_hearing_leaderboard_screen.dart';
 import '../constants/access_level.dart';
 
 class AppRouter {
@@ -53,7 +54,7 @@ class AppRouter {
 
       // Route-level access control: a plain student typing /admin or
       // /facilitator in the URL bar gets bounced back, not let through.
-      if (loc == '/admin' && accessLevel != AccessLevel.superAdmin) return '/home';
+      if ((loc == '/admin' || loc == '/admin-report') && accessLevel != AccessLevel.superAdmin) return '/home';
       if (loc == '/facilitator' && accessLevel == AccessLevel.student) return '/home';
 
       return null;
@@ -64,7 +65,11 @@ class AppRouter {
       GoRoute(path: '/facilitator-login', builder: (_, __) => const FacilitatorLoginScreen()),
       GoRoute(path: '/profile-setup',     builder: (_, __) => const ProfileSetupScreen()),
       GoRoute(path: '/home',              builder: (_, __) => const HomeScreen()),
-      GoRoute(path: '/admin',             builder: (_, __) => const StudentListScreen(title: 'All Students')),
+      GoRoute(
+        path: '/admin',
+        builder: (_, __) => const StudentListScreen(title: 'All Students', showLeaderboardButton: true),
+      ),
+      GoRoute(path: '/admin-report', builder: (_, __) => const ReadingHearingLeaderboardScreen()),
       GoRoute(path: '/facilitator',       builder: (_, __) => const FacilitatorDashboardScreen()),
       GoRoute(
         path: '/student-detail',

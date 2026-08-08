@@ -14,8 +14,14 @@ import '../services/admin_service.dart';
 class StudentListScreen extends StatefulWidget {
   final String title;
   final String? facilitatorDikshitName;
+  final bool showLeaderboardButton;
 
-  const StudentListScreen({super.key, required this.title, this.facilitatorDikshitName});
+  const StudentListScreen({
+    super.key,
+    required this.title,
+    this.facilitatorDikshitName,
+    this.showLeaderboardButton = false,
+  });
 
   @override
   State<StudentListScreen> createState() => _StudentListScreenState();
@@ -48,6 +54,12 @@ class _StudentListScreenState extends State<StudentListScreen> {
       appBar: AppBar(
         title: Text(widget.title),
         actions: [
+          if (widget.showLeaderboardButton)
+            IconButton(
+              icon: const Icon(Icons.leaderboard_rounded),
+              tooltip: 'Reading & Hearing Report',
+              onPressed: () => context.push('/admin-report'),
+            ),
           if (_isPasswordLogin)
             IconButton(
               icon: const Icon(Icons.password_rounded),
