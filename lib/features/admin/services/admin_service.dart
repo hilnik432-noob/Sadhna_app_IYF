@@ -1,6 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import '../../../core/constants/access_level.dart';
 import '../../sadhana/services/reading_hearing_stats.dart';
 import '../../sadhana/services/sadhana_repository.dart';
 
@@ -84,9 +83,15 @@ class AdminService {
       ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
   }
 
-  /// Excludes facilitator/super_admin accounts from student lists — those
-  /// also live in `users`, but aren't students to show/drill into.
+  /// Whether this user doc represents a real practicing devotee to list —
+  /// deliberately checked by `profileComplete`, NOT accessLevel. A
+  /// facilitator/super_admin can ALSO be a genuine student logging their
+  /// own sadhna (both real accounts in this app are exactly that case);
+  /// excluding by accessLevel would hide their own history from every
+  /// dashboard, including their own. Synthetic facilitator-only accounts
+  /// (created directly by seed_facilitator_accounts.py) never go through
+  /// profile setup, so this field is simply absent for them.
   bool _isPlainStudentAccount(Map<String, dynamic> data) {
-    return AccessLevel.fromString(data['accessLevel'] as String?) == AccessLevel.student;
+    return data['profileComplete'] == true;
   }
 }
